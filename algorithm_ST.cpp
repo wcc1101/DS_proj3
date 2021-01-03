@@ -4,6 +4,7 @@
 #include "../include/algorithm.h"
 
 using namespace std;
+#define N 4
 
 /******************************************************
  * In your algorithm, you can just use the the funcitons
@@ -26,11 +27,13 @@ using namespace std;
 *************************************************************************/
 class BOARD;
 class CELL;
+class MOVE;
 int heuristic(BOARD, int, int);
 bool inrange(int, int);
 bool critical(BOARD, int, int);
 bool corner(int, int);
 bool edge(int, int);
+bool available_for_me(BOARD, int, int);
 
 char color_me;
 
@@ -75,7 +78,7 @@ public:
             for (int j = 0; j < 5; j++)
                 this->ground[i][j] = a.ground[i][j];
     }
-    ~BOARD(){};
+    ~BOARD() {}
 
     void cell_reset(int r, int c)
     {
@@ -144,8 +147,23 @@ public:
     }
 };
 
+class MOVE
+{
+public:
+    int index1, index2;
+    int score;
+    MOVE() {}
+    MOVE(int i, int j, int c)
+    {
+        this->index1 = i;
+        this->index2 = j;
+        this->score = c;
+    }
+};
+
 int heuristic(BOARD b, int row, int col)
 {
+    b.add_orb(row, col, color_me);
     int flag_all_me = 1;
     int flag_all_not_me = 1;
     for (int i = 0; i < 5; i++)
@@ -173,7 +191,7 @@ int heuristic(BOARD b, int row, int col)
                 if (critical(b, r, c))
                 {
                     flag_no_critical = 0;
-                    if (critical(b, row, col))
+                    if (b.ground[row][col].capacity == b.ground[row][col].num) //going to explode
                         value += b.ground[r][c].capacity;
                     else if (b.ground[r][c].color != b.ground[row][col].color)
                         value -= b.ground[r][c].capacity;
@@ -227,6 +245,154 @@ bool inrange(int row, int col)
     return true;
 }
 
+bool available_for_me(BOARD b, int row, int col)
+{
+    if (b.ground[row][col].color == color_me)
+        return true;
+    else if (b.ground[row][col].color == 'w')
+        return true;
+    else
+        return false;
+}
+
+bool available_for_you(BOARD b, int row, int col)
+{
+    if (b.ground[row][col].color == color_me)
+        return false;
+    else
+        return true;
+}
+
+void print(BOARD b)
+{
+    char symbol;
+    int orb_num;
+    cout << "=============================================================" << endl;
+    for (int i = 0; i < ROW; i++)
+    {
+        for (int j = 0; j < COL; j++)
+        {
+
+            symbol = b.ground[i][j].color;
+            switch (symbol)
+            {
+            case 'r':
+                symbol = 'O';
+                break;
+            case 'b':
+                symbol = 'X';
+                break;
+            default:
+                symbol = ' ';
+                break;
+            }
+
+            orb_num = b.ground[i][j].num;
+            switch (orb_num)
+            {
+            case 0:
+                cout << "|       | ";
+                break;
+            case 1:
+                cout << "|" << symbol << "      | ";
+                break;
+            case 2:
+                cout << "|" << symbol << symbol << "     | ";
+                break;
+            case 3:
+                cout << "|" << symbol << symbol << symbol << "    | ";
+                break;
+            case 4:
+                cout << "|" << symbol << symbol << symbol << symbol << "   | ";
+                break;
+            case 5:
+                cout << "|" << symbol << symbol << symbol << symbol << symbol << "  | ";
+                break;
+            case 6:
+                cout << "|" << symbol << symbol << symbol << symbol << symbol << symbol << " | ";
+                break;
+            default:
+                cout << "|" << symbol << symbol << symbol << symbol << symbol << symbol << symbol << "| ";
+                break;
+            }
+        }
+        cout << endl;
+    }
+    cout << "=============================================================" << endl
+         << endl;
+}
+
+char color_you()
+{
+    if (color_me == 'r')
+        return 'b';
+    else
+        return 'r';
+}
+
+MOVE minimax(BOARD b, int round)
+{
+    if (round == N)
+    {
+        MOVE max = MOVE(0, 0, 0);
+        for (int i = 0; i < 5; i++)
+            for (int j = 0; j < 6; j++)
+                if (available_for_me(b, i, j))
+                {
+                    BOARD p = b;
+                    int score = heuristic(p, i, j);
+                    if (score > max.score)
+                        max = MOVE(i, j, score);
+                }
+        return max;
+    }
+    else
+    {
+        if (round % 2 == 0)
+        {
+            MOVE max = MOVE(0, 0, 0);
+            for (int i = 0; i < 5; i++)
+                for (int j = 0; j < 6; j++)
+                    if (available_for_me(b, i, j))
+                    {
+                        BOARD p = b;
+                        p.add_orb(i, j, color_me);
+                        if (p.ground[i][j].num == p.ground[i][j].capacity)
+                        {
+                            p.explode(i, j);
+                            p.reaction_mark();
+                            p.chain_reaction();
+                        }
+                        MOVE t = minimax(p, round + 1);
+                        if (t.score > max.score)
+                            max = t;
+                    }
+            return max;
+        }
+        else
+        {
+            MOVE min = MOVE(0, 0, 100000);
+            for (int i = 0; i < 5; i++)
+                for (int j = 0; j < 6; j++)
+                    if (available_for_you(b, i, j))
+                    {
+                        BOARD p = b;
+                        p.add_orb(i, j, color_you());
+                        if (p.ground[i][j].num == p.ground[i][j].capacity)
+                        {
+                            p.explode(i, j);
+                            p.reaction_mark();
+                            p.chain_reaction();
+                        }
+                        MOVE t = minimax(p, round + 1);
+                        if (t.score < min.score)
+                            min = t;
+                    }
+            return min;
+        }
+    }
+}
+
 void algorithm_A(Board board, Player player, int index[])
 {
     int row, col;
@@ -236,21 +402,12 @@ void algorithm_A(Board board, Player player, int index[])
         for (int j = 0; j < 6; j++)
             b.ground[i][j] = CELL(i, j, board.get_capacity(i, j), board.get_orbs_num(i, j), board.get_cell_color(i, j));
 
-    int max = 0;
-    for (int i = 0; i < 5; i++)
-        for (int j = 0; j < 6; j++)
-        {
-            BOARD p = b;
-            p.add_orb(i, j, color_me);
-            cout << "h:" << heuristic(p, i, j) << endl;
-            if (heuristic(p, i, j) > max)
-            {
-                max = heuristic(p, i, j);
-                row = i;
-                col = j;
-            }
-        }
+    cout << "now board:" << endl;
+    print(b);
 
-    index[0] = row;
-    index[1] = col;
+    MOVE ans;
+    ans = minimax(b, 0);
+
+    index[0] = ans.index1;
+    index[1] = ans.index2;
 }
