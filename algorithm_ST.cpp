@@ -15,9 +15,9 @@ using namespace std;
 #define MAX 2147483647
 #define MIN -2147483647
 
-#define N 3 //depth
+#define N 1 //depth
 
-int heuristic(Board, int, int);
+int heuristic(Board, int, int, Player);
 int adjency_critical_connected(bool[][COL], int, int, Board);
 int adjency_critical(int, int, Board);
 bool corner(int, int);
@@ -248,7 +248,6 @@ void algorithm_A(Board board, Player player, int index[])
     color_me = player.get_color();
     color_enemy = (color_me == 'r') ? 'b' : 'r';
     Player enemy(color_enemy);
-
     int ans = ORIGINAL;
     int alpha = MIN;
     int beta = MAX;
