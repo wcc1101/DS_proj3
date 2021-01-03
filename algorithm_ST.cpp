@@ -24,7 +24,6 @@ bool corner(int, int);
 bool edge(int, int);
 bool inrange(int, int);
 bool available(Board, int, int, Player);
-void print(Board);
 int result(Board, Player);
 int minimax(int, int, Board, Player, Player, int, int, int, int);
 
